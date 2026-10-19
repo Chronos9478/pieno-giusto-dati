@@ -29,8 +29,20 @@ jobs:
       - uses: actions/setup-node@v5
         with:
           node-version: 22
+      - name: Scarica i file del Ministero
+        # Il sito del Ministero a volte risponde lentamente ai server esteri:
+        # curl aspetta fino a 2 minuti per collegarsi e riprova da solo.
+        run: |
+          for f in anagrafica_impianti_attivi prezzo_alle_8; do
+            curl --fail --silent --show-error --location \
+              --connect-timeout 120 --max-time 600 \
+              --retry 4 --retry-delay 30 --retry-all-errors \
+              -A "PienoGiusto-dati/1.0 (github.com/${{ github.repository }})" \
+              -o "$f.csv" "https://www.mimit.gov.it/images/exportCSV/$f.csv"
+            echo "$f.csv: $(wc -l < "$f.csv") righe"
+          done
       - name: Prepara i dati
-        run: node build.mjs --out public
+        run: node build.mjs --impianti anagrafica_impianti_attivi.csv --prezzi prezzo_alle_8.csv --out public
       - uses: actions/upload-pages-artifact@v4
         with:
           path: public
