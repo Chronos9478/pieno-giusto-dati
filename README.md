@@ -1,32 +1,52 @@
 # Pieno Giusto – dati
 
-Ogni mattina scarica i prezzi dei carburanti dal Ministero (MIMIT – Osservaprezzi carburanti), li controlla e li pubblica divisi in piccoli file per zona. L'app scarica solo quelli vicini a te: pochi KB invece di 7-8 MB.
+Ogni giorno un piccolo server in Italia scarica i prezzi dei carburanti dal Ministero (MIMIT – Osservaprezzi carburanti). Li controlla, li divide in piccoli file per zona e li pubblica gratis su GitHub Pages. L'app scarica solo i file della tua zona: pochi KB invece di 7-8 MB.
 
-Gira gratis su GitHub (GitHub Actions + GitHub Pages).
+Perché un server in Italia: da metà ottobre 2026 il sito del Ministero non accetta più collegamenti dai server di GitHub, che sono all'estero.
 
-## Come attivarlo (una volta sola, circa 10 minuti)
+## File
 
-1. Crea un account gratuito su https://github.com
-2. In alto a destra premi **+** → **New repository**
-   - Repository name: `pieno-giusto-dati`
-   - Lascia **Public**, perché GitHub Pages gratis funziona solo con i repository pubblici. Qui ci sono solo i dati, non il codice dell'app.
-   - Premi **Create repository**
-3. Nella pagina che si apre, clicca il link **uploading an existing file**. Trascina dentro **tutto il contenuto** di questa cartella: `build.mjs`, `test.mjs`, `README.md` e la cartella `.github`. Poi premi **Commit changes**.
-   - Controlla che sia comparsa la cartella `.github`. Se manca, premi **Add file → Create new file**, come nome scrivi `.github/workflows/aggiorna-dati.yml`, incolla il contenuto del file con lo stesso nome e premi **Commit changes**.
-4. Vai su **Settings → Pages**. Alla voce *Build and deployment → Source* scegli **GitHub Actions**.
-5. Vai su **Actions**. Se te lo chiede, abilita i workflow. Poi apri **Aggiorna dati carburanti** e premi **Run workflow** → **Run workflow**.
-6. Dopo 1-2 minuti compare un pallino verde. Apri `https://TUONOME.github.io/pieno-giusto-dati/`: devi vedere la data dei dati e il numero dei distributori.
+| File | A cosa serve |
+|---|---|
+| `build.mjs` | Legge i file del Ministero, li controlla e crea i file per zona |
+| `pubblica.sh` | Scarica, prepara e pubblica sul ramo `gh-pages`. Lo lancia il server alle 9:30 e alle 12:30 |
+| `installa.sh` | Prepara il server, da lanciare una volta sola |
+| `test.mjs` | Prova `build.mjs` con dati finti: `node test.mjs` |
 
-Da quel momento si aggiorna da solo due volte al giorno.
+## Installazione
 
-## Da sapere
+### A. Su GitHub (repository `pieno-giusto-dati`)
+1. Se esiste il vecchio file `.github/workflows/aggiorna-dati.yml`, aprilo, premi **⋯** in alto a destra → **Delete file** → **Commit changes**.
+2. Premi **Add file → Upload files** e trascina `build.mjs`, `pubblica.sh`, `installa.sh` e `README.md`. Poi premi **Commit changes**.
 
-- Se un giorno il file del Ministero arriva incompleto, lo script **non pubblica nulla** e restano online i dati del giorno prima. GitHub ti avvisa per email con un pallino rosso.
-- Se nel repository non succede niente per 60 giorni, GitHub sospende gli aggiornamenti automatici e ti manda un'email. Per riattivarli basta un clic su **Enable workflow** nella scheda Actions.
-- Per provarlo sul computer: `node test.mjs` (dati finti) oppure `node build.mjs` (dati veri, crea la cartella `public`).
+### B. Il server (Aruba Cloud, o un altro VPS con indirizzo italiano)
+1. Compra un **Cloud VPS** con sistema operativo **Ubuntu** (24.04 o più recente). Basta il piano più piccolo.
+2. Annota l'**indirizzo IP** del server e la **password di root**.
+
+### C. Installazione sul server
+1. Sul PC apri PowerShell e collegati al server, scrivendo il tuo IP al posto di `INDIRIZZO_IP`:
+   ```
+   ssh root@INDIRIZZO_IP
+   ```
+   Alla domanda "Are you sure…" scrivi `yes`, poi inserisci la password. Mentre la scrivi non compare nulla: è normale.
+2. Incolla questo comando, con il tuo nome utente GitHub alla fine:
+   ```
+   curl -fsSL https://raw.githubusercontent.com/Chronos9478/pieno-giusto-dati/main/installa.sh | bash -s Chronos9478
+   ```
+3. Alla fine il comando stampa una riga che inizia con `ssh-ed25519`. Aggiungila su GitHub come **Deploy key**: si fa su `github.com/TUONOME/pieno-giusto-dati/settings/keys/new`, spuntando **Allow write access**.
+4. Torna nel terminale del server e lancia la prima pubblicazione:
+   ```
+   /opt/pieno-giusto-dati/pubblica.sh
+   ```
+
+### D. Attiva la pagina
+Su GitHub vai in **Settings → Pages**. Imposta *Source* su **Deploy from a branch**, scegli il ramo **gh-pages** con la cartella **/ (root)** e premi **Save**. Dopo un paio di minuti `https://TUONOME.github.io/pieno-giusto-dati/` mostra la data dei dati.
+
+## Controllare che funzioni
+- Il registro è sul server: `tail -n 30 /var/log/pieno-giusto.log`
+- Se un giorno il file del Ministero arriva incompleto, `build.mjs` **non pubblica nulla** e restano online i dati del giorno prima.
 
 ## Formato dei file
-
 `v1/tiles/<lat>_<lon>.json`, dove la chiave è `floor(lat / 0,5)_floor(lon / 0,5)`:
 
 ```
@@ -34,5 +54,4 @@ Da quel momento si aggiorna da solo due volte al giorno.
   "s": [ [id, marchio, indirizzo, comune, provincia, lat, lon,
           [[carburante, prezzo, self, data_in_secondi], ...] ], ... ] }
 ```
-
-Codici carburante: 0 benzina, 1 gasolio, 2 GPL, 3 metano. Il file `v1/meta.json` contiene il riepilogo.
+Codici carburante: 0 benzina, 1 gasolio, 2 GPL, 3 metano. `v1/meta.json` contiene il riepilogo.

@@ -137,7 +137,7 @@ export const tileKey = (lat, lon) => `${Math.floor(lat / TILE_DEG)}_${Math.floor
 // ---------------------------------------------------------------- main
 
 export async function build({ impianti = URL_IMPIANTI, prezzi = URL_PREZZI, out = 'public' } = {}) {
-  console.log('Scarico i file del Ministero…');
+  console.log('Leggo i file del Ministero…');
   const [stationsCsv, pricesCsv] = await Promise.all([getText(impianti), getText(prezzi)]);
 
   const stations = parseStations(stationsCsv);
