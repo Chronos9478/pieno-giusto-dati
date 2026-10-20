@@ -7,6 +7,10 @@
 #   PUSH_URL  dove pubblicare (di default il repository GitHub, ramo gh-pages)
 set -euo pipefail
 
+# Tutto dentro una funzione: bash legge lo script per intero prima di eseguirlo,
+# così il "git pull" qui sotto può aggiornare questo stesso file senza problemi.
+main() {
+
 DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 KEY="${DEPLOY_KEY:-/root/.ssh/pieno_giusto_deploy}"
 UA="PienoGiusto-dati/1.0"
@@ -41,6 +45,9 @@ node "$DIR/build.mjs" \
   --prezzi "$WORK/prezzo_alle_8.csv" \
   --out "$WORK/public"
 
+# Pagine fisse del sito (es. privacy.html)
+if [[ -d "$DIR/sito" ]]; then cp -r "$DIR/sito/." "$WORK/public/"; fi
+
 # Pubblica: un solo commit sul ramo gh-pages, che sostituisce quello del giorno prima
 cd "$WORK/public"
 touch .nojekyll
@@ -52,3 +59,7 @@ GIT_SSH_COMMAND="ssh -i $KEY -o IdentitiesOnly=yes -o StrictHostKeyChecking=acce
   git push -q --force "$PUSH_URL" gh-pages
 
 echo "[$(date '+%F %T')] Pubblicato"
+}
+
+main "$@"
+exit
